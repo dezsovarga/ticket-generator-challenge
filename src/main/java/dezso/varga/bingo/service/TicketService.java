@@ -10,6 +10,8 @@ import java.util.stream.IntStream;
 @Service
 public class TicketService {
 
+    private static final int ROW = 3;
+    private static final int COLUMN = 9;
     Map<Integer, List<Integer>> ranges = new HashMap<>();
 
     public void initRanges() {
@@ -32,32 +34,38 @@ public class TicketService {
         return ranges.get(rangeNumber).remove(0);
     }
 
+    private void putToRandomColumnsOnRow(int row, List<Ticket> strip) {
+        for (Ticket ticket: strip) {
+            List<Integer> columns = this.getRandomRangeNumbers(5, new ArrayList<>());
+            columns.forEach(column -> ticket.getNumbers()[row][column-1] = this.getRandomNumberByRange(column));
+        }
+    }
+
+    private void putToFreeColumnsThenRandomOnRow(int row, List<Ticket> strip) {
+        for (Ticket ticket: strip) {
+            List<Integer> freeColumns = this.getFreeColumnsUntilRow(ticket.getNumbers(), 1);
+            List<Integer> columns = this.getRandomRangeNumbers(5 - freeColumns.size(), freeColumns);
+            columns.addAll(freeColumns);
+            columns.forEach(column -> ticket.getNumbers()[1][column-1] = this.getRandomNumberByRange(column));
+        }
+    }
+
     public List<Ticket> generateStrip() {
         this.initRanges();
         List<Ticket> strip =
                 Arrays.asList(new Ticket(), new Ticket(), new Ticket(), new Ticket(), new Ticket(), new Ticket());
 
-        for (Ticket ticket: strip) {
-            List<Integer> columns = this.getRandomRangeNumbers(5, new ArrayList<>());
-            columns.forEach(column -> ticket.getNumbers()[0][column-1] = this.getRandomNumberByRange(column));
-        }
+        this.putToRandomColumnsOnRow(0, strip);
 
-        for (Ticket ticket: strip) {
-            List<Integer> freeColumns = this.getFreeColumns(ticket.getNumbers());
-            List<Integer> columns = this.getRandomRangeNumbers(5 - freeColumns.size(), freeColumns);
-            columns.addAll(freeColumns);
-            columns.forEach(column -> ticket.getNumbers()[1][column-1] = this.getRandomNumberByRange(column));
-        }
+        this.putToFreeColumnsThenRandomOnRow(1, strip);
 
-        for (Ticket ticket: strip) {
-            List<Integer> columns = this.getRandomRangeNumbers(5, new ArrayList<>());
-            columns.forEach(column -> ticket.getNumbers()[2][column-1] = this.getRandomNumberByRange(column));
-        }
+        this.putToRandomColumnsOnRow(2, strip);
 
         if (!ranges.isEmpty()) {
             this.placeRemainingNumbers(strip);
         }
         this.repairDueToInvalidColumns(strip);
+
         this.sortColumns(strip);
 
         return strip;
@@ -94,7 +102,7 @@ public class TicketService {
         int incompleteRow = this.getIncompleteRow(incompleteTicket);
 
         for (Ticket ticket:strip) {
-            for (int i=0; i<3; i++) {
+            for (int i=0; i<ROW; i++) {
                 int switchableColumn = this.getSwitchableColumn(i, ticket, incompleteTicket);
                 if (ticket.getNumbers()[i][column] == 0 && switchableColumn > -1) {
                     ticket.getNumbers()[i][column] = value;
@@ -110,11 +118,8 @@ public class TicketService {
     public void sortColumns(List<Ticket> strip) {
         List<Integer> column;
         for (Ticket ticket:strip) {
-            for (int i=0; i<9; i++) {
-                column = new ArrayList<>();
-                for (int j=0; j<3; j++) {
-                    column.add(ticket.getNumbers()[j][i]);
-                }
+            for (int i=0; i<COLUMN; i++) {
+                column = this.getColumnList(i, ticket);
                 if (Collections.frequency(column,0) < 2) {
                     int indexOfZero = column.indexOf(0);
                     if (indexOfZero!= -1) {
@@ -124,7 +129,7 @@ public class TicketService {
                     if (indexOfZero!= -1) {
                         column.add(indexOfZero, Integer.valueOf(0));
                     }
-                    for (int j=0; j<3; j++) {
+                    for (int j=0; j<ROW; j++) {
                         ticket.getNumbers()[j][i] = column.get(j);
                     }
                 }
@@ -135,12 +140,10 @@ public class TicketService {
 
     public int getInvalidColumn(Ticket ticket) {
         List<Integer> column;
-        for (int i=0; i<9; i++) {
-            column = new ArrayList<>();
-            for (int j=0; j<3; j++) {
-                column.add(ticket.getNumbers()[j][i]);
-            }
-            if ( Collections.frequency(column, 0) == 3) {
+        for (int i=0; i<COLUMN; i++) {
+            column = this.getColumnList(i, ticket);
+
+            if ( Collections.frequency(column, 0) == ROW) {
                 return i;
             }
         }
@@ -149,7 +152,7 @@ public class TicketService {
 
     public List<Integer> getColumnList(int column, Ticket ticket) {
         List<Integer> columnList = new ArrayList<>();
-        for (int i=0; i<3; i++) {
+        for (int i=0; i<ROW; i++) {
             columnList.add(ticket.getNumbers()[i][column]);
         }
         return columnList;
@@ -158,9 +161,9 @@ public class TicketService {
     public boolean switchDueToInvalidColumn(int invalidColumn, Ticket ticket, Ticket invalidTicket) {
         List<Integer> columnList = this.getColumnList(invalidColumn, ticket);
 
-        for (int i=0; i<3; i++) {
+        for (int i=0; i<ROW; i++) {
             if (ticket.getNumbers()[i][invalidColumn] != 0 && Collections.frequency(columnList, 0) <2) {
-                for (int j=0; j<9; j++) {
+                for (int j=0; j<COLUMN; j++) {
                     if (ticket.getNumbers()[i][j] == 0 && invalidTicket.getNumbers()[i][j] != 0
                             && Collections.frequency(this.getColumnList(j, invalidTicket), 0) < 2 ){
 
@@ -180,9 +183,9 @@ public class TicketService {
     public int getSwitchableColumn(int row, Ticket ticket, Ticket incompleteTicket) {
         int incompleteRow = this.getIncompleteRow(incompleteTicket);
         List<Integer> column;
-        for (int i=0; i<9; i++) {
+        for (int i=0; i<COLUMN; i++) {
             column = new ArrayList<>();
-            for (int j=0; j<3; j++) {
+            for (int j=0; j<ROW; j++) {
                 column.add(ticket.getNumbers()[j][i]);
             }
             if (ticket.getNumbers()[row][i] != 0 && Collections.frequency(column, 0) <2 &&
@@ -204,9 +207,9 @@ public class TicketService {
 
     public int getIncompleteRow(Ticket ticket) {
         int rowNumbers;
-        for (int i=0; i<3; i++) {
+        for (int i=0; i<ROW; i++) {
             rowNumbers = 0;
-            for (int j=0; j<9; j++) {
+            for (int j=0; j<COLUMN; j++) {
                 if (ticket.getNumbers()[i][j] != 0) {
                     rowNumbers++;
                 }
@@ -218,12 +221,12 @@ public class TicketService {
         return -1;
     }
 
-    public List<Integer> getFreeColumns(int[][] ticket) {
+    public List<Integer> getFreeColumnsUntilRow(int[][] ticket, int row) {
         List<Integer> freeColumns = new ArrayList<>();
         boolean isFree;
-        for (int i=0; i<9; i++) {
+        for (int i=0; i<COLUMN; i++) {
             isFree = true;
-            for (int j=0; j<2; j++) {
+            for (int j=0; j<row; j++) {
                 if (ticket[j][i] != 0) {
                     isFree = false;
                 }
@@ -245,8 +248,8 @@ public class TicketService {
     public void print(List<Ticket> strip) {
         for (Ticket ticket: strip) {
             System.out.println("------------------------------------");
-            for (int i=0; i<3; i++) {
-                for (int j=0; j<9; j++) {
+            for (int i=0; i<ROW; i++) {
+                for (int j=0; j<COLUMN; j++) {
                     System.out.printf("%-3s ", ticket.getNumbers()[i][j]);
                 }
                 System.out.println();

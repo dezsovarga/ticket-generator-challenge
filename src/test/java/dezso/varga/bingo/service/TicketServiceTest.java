@@ -21,8 +21,11 @@ class TicketServiceTest {
     @Autowired
     private TicketService ticketService;
 
+    private static final int ROW = 3;
+    private static final int COLUMN = 9;
+
     @Test
-    void generateStrip() {
+    void generate10kStrips() {
 
         for (int i=0;i<10000;i++) {
             List<Ticket> strip = ticketService.generateStrip();
@@ -52,7 +55,7 @@ class TicketServiceTest {
     private void validateTicket(Ticket ticket) {
         assertTrue(ticketService.getIncompleteRow(ticket) == -1);
 
-        for (int i=0; i<9; i++) {
+        for (int i=0; i<COLUMN; i++) {
             List<Integer> column = ticketService.getColumnList(i, ticket);
             assertTrue(Collections.frequency(column, 0) < 3);
             for (Integer colNum: column) {
@@ -75,8 +78,8 @@ class TicketServiceTest {
     private void validateStripAllNumbers(List<Ticket> strip) {
         List<Integer> allStripNumbers = new ArrayList<>();
         for (Ticket ticket: strip) {
-            for (int i=0; i<3; i++) {
-                for (int j=0; j<9; j++) {
+            for (int i=0; i<ROW; i++) {
+                for (int j=0; j<COLUMN; j++) {
                     if (ticket.getNumbers()[i][j] !=0 ) {
                         allStripNumbers.add(ticket.getNumbers()[i][j]);
                     }
